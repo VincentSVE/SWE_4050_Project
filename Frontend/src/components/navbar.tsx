@@ -1,98 +1,119 @@
-import { useState} from "react";
-import type { CSSProperties , SubmitEvent } from 'react';
+import { Link } from "react-router-dom";
 
-interface NavbarProps {
-  onSearch?: (query: string) => void;
-  onHomeClick?: () => void;
-}
-
-function Navbar({ onSearch, onHomeClick }: NavbarProps) {
-  const [search, setSearch] = useState<string>("");
-
-  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    onSearch?.(search);
-  };
-
+export default function Navbar() {
   return (
-    <nav style={styles.navbar}>
-     
-      <div style={styles.side} />
+    <header style={styles.header}>
+      <div style={styles.inner}>
+        {/* LEFT — Brand */}
+        <div style={styles.left}>
+          <Link to="/" style={styles.brand}>
+            🎬 CineScope
+          </Link>
+        </div>
 
-    
-      <div style={styles.center}>
-        <button style={styles.homeButton} onClick={onHomeClick}>
-          Home
-        </button>
-      </div>
+        {/* CENTER — Main Nav */}
+        <div style={styles.center}>
+          <Link to="/" style={styles.navLink}>Home</Link>
+          <Link to="/explore" style={styles.navLink}>Explore</Link>
+          <Link to="/about" style={styles.navLink}>About</Link>
+        </div>
 
-   
-      <div style={styles.side}>
-        <form onSubmit={handleSubmit} style={styles.searchForm}>
-          <input
-            type="text"
-            placeholder="Search..."
-            value={search}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setSearch(e.target.value)
-            }
-            style={styles.input}
-          />
-          <button type="submit" style={styles.searchButton}>
-            Search
-          </button>
-        </form>
+        {/* RIGHT — Search + Auth */}
+        <div style={styles.right}>
+          <input placeholder="Search…" style={styles.searchInput} />
+          <button style={styles.ghostBtn}>Log In</button>
+          <button style={styles.primaryBtn}>Sign Up</button>
+        </div>
       </div>
-    </nav>
+    </header>
   );
 }
 
-const styles: Record<string, CSSProperties> = {
-  navbar: {
-    display: "flex",
+const styles: Record<string, React.CSSProperties> = {
+  header: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 70,
+    zIndex: 50,
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+    background: "rgba(10, 10, 12, 0.4)",
+    borderBottom: "1px solid rgba(255,255,255,0.12)",
+  },
+
+  inner: {
+    height: "100%",
+    display: "grid",
+    gridTemplateColumns: "1fr auto 1fr",
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 20px",
-    height: "60px",
-    backgroundColor: "#1f2937",
+    padding: "0 24px",
+  },
+
+  /* LEFT */
+  left: {
+    display: "flex",
+    justifyContent: "flex-start",
+  },
+
+  brand: {
+    textDecoration: "none",
+    fontWeight: 800,
+    fontSize: 18,
+    letterSpacing: 1,
     color: "white",
   },
+
+  /* CENTER */
   center: {
-    flex: 1,
     display: "flex",
     justifyContent: "center",
+    gap: 30,
   },
-  side: {
-    flex: 1,
+
+  navLink: {
+    textDecoration: "none",
+    color: "rgba(255,255,255,0.85)",
+    fontWeight: 600,
+    fontSize: 15,
+    letterSpacing: 0.5,
+  },
+
+  /* RIGHT */
+  right: {
     display: "flex",
     justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 12,
   },
-  homeButton: {
-    padding: "8px 16px",
-    fontSize: "16px",
-    cursor: "pointer",
-    backgroundColor: "#2563eb",
+
+  searchInput: {
+    padding: "8px 12px",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.2)",
+    background: "rgba(255,255,255,0.08)",
     color: "white",
-    border: "none",
-    borderRadius: "6px",
+    outline: "none",
   },
-  searchForm: {
-    display: "flex",
-    gap: "8px",
-  },
-  input: {
-    padding: "6px 10px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-  },
-  searchButton: {
-    padding: "6px 12px",
-    borderRadius: "6px",
-    border: "none",
-    cursor: "pointer",
-    backgroundColor: "#10b981",
+
+  ghostBtn: {
+    background: "transparent",
+    border: "1px solid rgba(255,255,255,0.25)",
     color: "white",
+    padding: "8px 14px",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: 600,
+  },
+
+  primaryBtn: {
+    background: "white",
+    color: "black",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: 700,
   },
 };
-
-export default Navbar;
