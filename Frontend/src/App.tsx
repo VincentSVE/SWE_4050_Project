@@ -1,45 +1,30 @@
 import { Routes, Route } from "react-router-dom";
-import Card from "./components/card";
-import MoviePage from "./components/moviePage";
 import Navbar from "./components/navbar";
+import MoviePage from "./components/moviePage";
+import HomePage from "./Pages/HomePage";
 
 function App() {
   return (
-    <>
+    <div style={styles.appWrapper}>
+      {/* Global Navigation */}
       <Navbar />
 
+      {/* Routes */}
       <Routes>
-        <Route
-          path="/"
-          element={
-            <div style={styles.container}>
-              <Card
-                id="1"
-                title="Mountains"
-                imageUrl=""
-                description=""
-              />
-              <Card
-                id="2"
-                title=""
-                imageUrl=""
-                description="."
-              />
-            </div>
-          }
-        />
+        {/* Home Route */}
+        <Route path="/" element={<HomePage />} />
 
+        {/* Movie Detail Route */}
         <Route path="/video/:id" element={<MoviePage />} />
       </Routes>
-    </>
+    </div>
   );
 }
 
-const styles = {
-  container: {
-    display: "flex",
-    gap: "20px",
-    padding: "40px",
+const styles: Record<string, React.CSSProperties> = {
+  appWrapper: {
+    minHeight: "100vh",
+    width: "100vw",
   },
 };
 
