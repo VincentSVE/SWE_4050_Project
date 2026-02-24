@@ -1,0 +1,303 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+
+type Movie = {
+  id: string | number;
+  title: string;
+  rating?: number;        // e.g. 8.2
+  mpaa?: string;          // e.g. "PG-13"
+  description?: string;
+  posterUrl?: string;     // full URL or relative
+  trailerUrl?: string;    // YouTube link or embed link
+};
+
+type ApiState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "success"; movie: Movie };
+
+function toYouTubeEmbed(url: string): string {
+  // Supports:
+  // - https://www.youtube.com/watch?v=VIDEOID
+  // - https://youtu.be/VIDEOID
+  // - already-embed URLs
+  try {
+    if (url.includes("youtube.com/embed/")) return url;
+
+    const u = new URL(url);
+    if (u.hostname.includes("youtu.be")) {
+      const id = u.pathname.replace("/", "");
+      return `https://www.youtube.com/embed/${id}`;
+    }
+    if (u.hostname.includes("youtube.com")) {
+      const id = u.searchParams.get("v");
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return url; // fallback: try as-is
+}
+
+export default function MovieDetail() {
+  const { id } = useParams<{ id: string }>();
+  const [state, setState] = useState<ApiState>({ status: "loading" });
+
+  // ✅ Hardcoded showtimes per movie (front-end)
+  // You can change keys to match your DB IDs (string/number).
+  const showtimesByMovieId: Record<string, string[]> = useMemo(
+    () => ({
+      "1": ["2:00 PM", "5:00 PM", "8:00 PM"],
+      "2": ["1:30 PM", "4:30 PM", "7:30 PM", "10:15 PM"],
+      "3": ["12:15 PM", "3:15 PM", "6:15 PM", "9:15 PM"],
+      // default handled below
+    }),
+    []
+  );
+
+  const showtimes = useMemo(() => {
+    if (!id) return ["2:00 PM", "5:00 PM", "8:00 PM"];
+    return showtimesByMovieId[id] ?? ["2:00 PM", "5:00 PM", "8:00 PM"];
+  }, [id, showtimesByMovieId]);
+
+  useEffect(() => {
+    if (!id) {
+      setState({ status: "error", message: "Missing movie id in URL." });
+      return;
+    }
+
+    let cancelled = false;
+
+    async function load() {
+      setState({ status: "loading" });
+
+      try {
+        // ✅ Replace with YOUR backend endpoint (Express, Spring, etc.)
+        // Example: GET http://localhost:3001/api/movies/:id
+        const res = await fetch(`/api/movies/${id}`);
+
+        if (!res.ok) {
+          throw new Error(`Failed to load movie (${res.status})`);
+        }
+
+        const movie: Movie = await res.json();
+
+        if (!cancelled) setState({ status: "success", movie });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        if (!cancelled) setState({ status: "error", message: msg });
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (state.status === "loading") {
+    return (
+      <div style={styles.page}>
+        <div style={styles.container}>Loading movie…</div>
+      </div>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <p style={{ color: "white" }}>Couldn’t load movie.</p>
+          <p style={{ color: "rgba(255,255,255,0.75)" }}>{state.message}</p>
+          <Link to="/" style={styles.backLink}>← Back to Home</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const { movie } = state;
+  const embedUrl = movie.trailerUrl ? toYouTubeEmbed(movie.trailerUrl) : "";
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.container}>
+        <Link to="/" style={styles.backLink}>← Back</Link>
+
+        <div style={styles.grid}>
+          {/* Poster */}
+          <div>
+            {movie.posterUrl ? (
+              <img src={movie.posterUrl} alt={movie.title} style={styles.poster} />
+            ) : (
+              <div style={styles.posterPlaceholder}>No poster</div>
+            )}
+          </div>
+
+          {/* Details */}
+          <div style={styles.details}>
+            <h1 style={styles.title}>{movie.title}</h1>
+
+            <div style={styles.metaRow}>
+              {typeof movie.rating === "number" && (
+                <span style={styles.pill}>⭐ {movie.rating.toFixed(1)}</span>
+              )}
+              {movie.mpaa && <span style={styles.pill}>{movie.mpaa}</span>}
+            </div>
+
+            {movie.description && (
+              <p style={styles.description}>{movie.description}</p>
+            )}
+
+            {/* Showtimes */}
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Showtimes</h3>
+              <div style={styles.timesRow}>
+                {showtimes.map((t) => (
+                  <button key={t} style={styles.timeBtn}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <p style={styles.sectionHint}>
+                (Hardcoded for now — later you can store showtimes in the DB too.)
+              </p>
+            </div>
+
+            {/* Trailer */}
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Trailer</h3>
+
+              {movie.trailerUrl ? (
+                <div style={styles.videoWrap}>
+                  <iframe
+                    title={`${movie.title} trailer`}
+                    src={embedUrl}
+                    style={styles.iframe}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              ) : (
+                <p style={styles.sectionHint}>No trailer available.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    minHeight: "100vh",
+    paddingTop: 90, // because your Navbar is fixed at 70px
+    background: "radial-gradient(1200px 600px at 20% 10%, rgba(255,255,255,0.08), transparent 60%), rgba(10,10,12,1)",
+  },
+  container: {
+    maxWidth: 1100,
+    margin: "0 auto",
+    padding: "0 24px 40px",
+  },
+  backLink: {
+    display: "inline-block",
+    marginBottom: 14,
+    textDecoration: "none",
+    color: "rgba(255,255,255,0.85)",
+    fontWeight: 700,
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "340px 1fr",
+    gap: 26,
+    alignItems: "start",
+  },
+  poster: {
+    width: "100%",
+    borderRadius: 16,
+    border: "1px solid rgba(255,255,255,0.14)",
+    boxShadow: "0 18px 40px rgba(0,0,0,0.4)",
+  },
+  posterPlaceholder: {
+    width: "100%",
+    height: 500,
+    borderRadius: 16,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.7)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 800,
+  },
+  details: {
+    color: "white",
+  },
+  title: {
+    margin: "0 0 10px",
+    fontSize: 34,
+    letterSpacing: 0.5,
+  },
+  metaRow: {
+    display: "flex",
+    gap: 10,
+    marginBottom: 14,
+    flexWrap: "wrap",
+  },
+  pill: {
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(255,255,255,0.08)",
+    borderRadius: 999,
+    padding: "6px 10px",
+    fontWeight: 800,
+    color: "rgba(255,255,255,0.92)",
+  },
+  description: {
+    margin: "0 0 18px",
+    lineHeight: 1.55,
+    color: "rgba(255,255,255,0.85)",
+  },
+  section: {
+    marginTop: 18,
+    paddingTop: 14,
+    borderTop: "1px solid rgba(255,255,255,0.12)",
+  },
+  sectionTitle: {
+    margin: "0 0 10px",
+    fontSize: 16,
+    letterSpacing: 0.4,
+  },
+  timesRow: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  timeBtn: {
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(255,255,255,0.08)",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: 800,
+  },
+  sectionHint: {
+    marginTop: 8,
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 12,
+    lineHeight: 1.4,
+  },
+  videoWrap: {
+    width: "100%",
+    aspectRatio: "16 / 9",
+    borderRadius: 16,
+    overflow: "hidden",
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "black",
+  },
+  iframe: {
+    width: "100%",
+    height: "100%",
+    border: 0,
+  },
+};
