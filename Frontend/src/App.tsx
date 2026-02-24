@@ -1,6 +1,8 @@
-import { Routes, Route } from "react-router-dom";
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/navbar";
 import MoviePage from "./components/moviePage";
+import MovieDetail from "./Pages/MovieDetail";
 import HomePage from "./Pages/HomePage";
 
 function App() {
@@ -14,8 +16,17 @@ function App() {
         {/* Home Route */}
         <Route path="/" element={<HomePage />} />
 
-        {/* Movie Detail Route */}
-        <Route path="/video/:id" element={<MoviePage />} />
+        {/* Explore Route (if your Navbar links to /explore) */}
+        <Route path="/explore" element={<MoviePage />} />
+
+        {/* Movie Detail Route (new) */}
+        <Route path="/movies/:id" element={<MovieDetail />} />
+
+        {/* Backward-compat: keep your old route working */}
+        <Route path="/video/:id" element={<Navigate to="/movies/:id" replace />} />
+
+        {/* Optional: 404 fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   );
