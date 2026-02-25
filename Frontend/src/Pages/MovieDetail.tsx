@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
+
 
 const API_BASE = (import.meta as any).env?.VITE_API_URL?.trim?.() || "http://localhost:8000";
 
@@ -42,6 +43,7 @@ function toYouTubeEmbed(url: string): string {
 }
 
 export default function MovieDetail() {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [state, setState] = useState<ApiState>({ status: "loading" });
 
@@ -158,7 +160,13 @@ export default function MovieDetail() {
               <h3 style={styles.sectionTitle}>Showtimes</h3>
               <div style={styles.timesRow}>
                 {showtimes.map((t) => (
-                  <button key={t} style={styles.timeBtn}>
+                  <button
+                    key={t}
+                    style={styles.timeBtn}
+                    onClick={() =>
+                      navigate(`/booking/${encodeURIComponent(movie.title)}?time=${encodeURIComponent(t)}`)
+                    }
+                  >
                     {t}
                   </button>
                 ))}
