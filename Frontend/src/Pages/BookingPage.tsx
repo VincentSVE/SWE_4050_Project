@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 
 
 function BookingPage() {
+  const bgUrl = "/images/backgroundImage.jpg";
   const { title } = useParams();
   const [searchParams] = useSearchParams();
   const time = searchParams.get("time");
@@ -38,69 +39,88 @@ function BookingPage() {
   };
 
   return (
-    <div style={styles.container}>
-      <div id="header">
-      <h1><u>Checkout</u></h1>
-      </div>
-      <h2>{title}</h2>
-      <h3><u>Selected Showtime: </u>{time}</h3>
+  <div
+    style={{
 
-      <div id = "ticket">
-      <div style={styles.ticketSection}>
+      minHeight: "100vh",
+      width: "100%",
+      backgroundImage: `url(${bgUrl})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    }}
+  >
+   
+    <div
+      style={{
 
-        <TicketRow
-          label="Adult"
-          price={PRICES.adult}
-          value={adultQty}
-          onChange={setAdultQty}
-        />
+        minHeight: "100vh",
+        backgroundColor: "rgba(0,0,0,0.75)",
+        padding: "40px 20px",
+        
+      }}
+    >
+      <div style={styles.container}>
+        <h1 style={{ textAlign: "center" }}><u>Checkout</u></h1>
 
-        <TicketRow
-          label="Child"
-          price={PRICES.child}
-          value={childQty}
-          onChange={setChildQty}
-        />
+        <h2>{title}</h2>
+        <h3><u>Selected Showtime:</u> {time}</h3>
 
-        <TicketRow
-          label="Senior"
-          price={PRICES.senior}
-          value={seniorQty}
-          onChange={setSeniorQty}
-        />
+        <div style={styles.ticketSection}>
+          <TicketRow
+            label="Adult"
+            price={PRICES.adult}
+            value={adultQty}
+            onChange={setAdultQty}
+          />
 
+          <TicketRow
+            label="Child"
+            price={PRICES.child}
+            value={childQty}
+            onChange={setChildQty}
+          />
+
+          <TicketRow
+            label="Senior"
+            price={PRICES.senior}
+            value={seniorQty}
+            onChange={setSeniorQty}
+          />
+        </div>
+
+        <h2 style={styles.total}><u>Total: ${totalPrice.toFixed(2)}</u></h2>
+
+        <h2 style={{ marginTop: "50px" }}>Select Seats:</h2>
+
+        <div style={styles.gridWrapper}>
+
+          {Array.from({ length: 5 }).map((_, row) => (
+            <div key={row} style={styles.row}>
+              {Array.from({ length: 10 }).map((_, col) => {
+                const seatId = `${row + 1}-${col + 1}`;
+                const isSelected = selectedSeats.has(seatId);
+
+                return (
+                  <div
+                    key={seatId}
+                    onClick={() => toggleSeat(seatId)}
+                    style={{
+                      ...styles.seat,
+                      backgroundColor: isSelected ? "#691A0A" : "#8B0000",
+                    }}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        <button style={styles.confirmBtn}>Confirm Order</button>
       </div>
     </div>
-      <h2 style={styles.total}><u>Total: ${totalPrice}</u></h2>
-
-      <h2 style={{ marginTop: "50px" }}>Select Seats:</h2>
-
-      <div style={styles.gridWrapper}>
-       
-       
-        {Array.from({ length: 5 }).map((_, row) => (
-          <div key={row} style={styles.row}>
-            {Array.from({ length: 10 }).map((_, col) => {
-              const seatId = `${row + 1}-${col + 1}`;
-              const isSelected = selectedSeats.has(seatId);
-
-              return (
-                <div
-                  key={seatId}
-                  onClick={() => toggleSeat(seatId)}
-                  style={{
-                    ...styles.seat,
-                    backgroundColor: isSelected ? "#691A0A" : "#8B0000",
-                  }}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
-      <button>Confirm Order</button>
-    </div>
-  );
+  </div>
+);
 }
 
 interface TicketRowProps {
@@ -135,18 +155,13 @@ function TicketRow({ label, price, value, onChange }: TicketRowProps) {
 }
 
 const styles: Record<string, CSSProperties> = {
-  container: {
-    
-    padding: "40px",
-    maxWidth: "1250px",
-    margin: "0 auto",
-    minHeight: "100vh",
-    minWidth: "100vh",
-    backgroundColor: "#121212",
-    color: "#F2F0EF",
-    paddingBlock: "2rem"
-    
-  },
+
+
+container: {
+  maxWidth: "1100px",
+  margin: "0 auto",
+  color: "#F2F0EF",
+},
 
   header:{
     textAlign: "center",
