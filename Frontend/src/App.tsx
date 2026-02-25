@@ -4,6 +4,7 @@ import Navbar from "./components/navbar";
 import MoviePage from "./components/moviePage";
 import MovieDetail from "./Pages/MovieDetail";
 import HomePage from "./Pages/HomePage";
+import BookingPage from "./Pages/BookingPage";
 
 function App() {
   return (
@@ -27,6 +28,9 @@ function App() {
 
         {/* Optional: 404 fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
+
+        <Route path="/booking/:id/:time" element={<BookingPage />} />
+        <Route path="/booking/:title" element={<BookingPage />} />
       </Routes>
     </div>
   );
