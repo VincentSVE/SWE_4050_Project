@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
+const API_BASE = (import.meta as any).env?.VITE_API_URL?.trim?.() || "http://localhost:8000";
+
 type Movie = {
-  id: string | number;
+  id: string ;
   title: string;
-  rating?: number;        // e.g. 8.2
-  mpaa?: string;          // e.g. "PG-13"
+  rating?: string;        // e.g. 8.2        // e.g. "PG-13"
   description?: string;
-  posterUrl?: string;     // full URL or relative
-  trailerUrl?: string;    // YouTube link or embed link
+  poster?: string;     // full URL or relative
+  trailer?: string;    // YouTube link or embed link
+  genre?: string[];
 };
 
 type ApiState =
@@ -74,7 +76,7 @@ export default function MovieDetail() {
       try {
         // ✅ Replace with YOUR backend endpoint (Express, Spring, etc.)
         // Example: GET http://localhost:3001/api/movies/:id
-        const res = await fetch(`/api/movies/${id}`);
+        const res = await fetch(`${API_BASE}/movies/${id}`);
 
         if (!res.ok) {
           throw new Error(`Failed to load movie (${res.status})`);
@@ -116,7 +118,7 @@ export default function MovieDetail() {
   }
 
   const { movie } = state;
-  const embedUrl = movie.trailerUrl ? toYouTubeEmbed(movie.trailerUrl) : "";
+  const embedUrl = movie.trailer ? toYouTubeEmbed(movie.trailer) : "";
 
   return (
     <div style={styles.page}>
@@ -126,8 +128,8 @@ export default function MovieDetail() {
         <div style={styles.grid}>
           {/* Poster */}
           <div>
-            {movie.posterUrl ? (
-              <img src={movie.posterUrl} alt={movie.title} style={styles.poster} />
+            {movie.poster ? (
+              <img src={movie.poster} alt={movie.title} style={styles.poster} />
             ) : (
               <div style={styles.posterPlaceholder}>No poster</div>
             )}
@@ -138,10 +140,13 @@ export default function MovieDetail() {
             <h1 style={styles.title}>{movie.title}</h1>
 
             <div style={styles.metaRow}>
-              {typeof movie.rating === "number" && (
-                <span style={styles.pill}>⭐ {movie.rating.toFixed(1)}</span>
-              )}
-              {movie.mpaa && <span style={styles.pill}>{movie.mpaa}</span>}
+              {/* ✅ 6. Use movie.rating for the MPAA pill */}
+              {movie.rating && <span style={styles.pill}>{movie.rating}</span>}
+              
+              {/* Render genres if you want to! */}
+              {movie.genre && movie.genre.map(g => (
+                <span key={g} style={styles.pill}>{g}</span>
+              ))}
             </div>
 
             {movie.description && (
@@ -167,7 +172,7 @@ export default function MovieDetail() {
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>Trailer</h3>
 
-              {movie.trailerUrl ? (
+              {movie.trailer ? (
                 <div style={styles.videoWrap}>
                   <iframe
                     title={`${movie.title} trailer`}

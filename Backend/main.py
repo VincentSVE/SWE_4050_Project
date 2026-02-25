@@ -43,6 +43,7 @@ def movie_serializer(movie) -> dict:
         "rating": movie.get("rating", ""),
         "genre": movie.get("genre", []),
         "currentlyPlaying": movie.get("currentlyPlaying", False),
+        "datesPlaying": movie.get("datesPlaying", []),
     }
 
 

@@ -7,7 +7,7 @@ type SearchFilters = {
   query: string;
   genre: string;       // dynamic from DB
   mpaa: string;        // dynamic from DB
-  minScore: number;    // placeholder slider (0–10)
+  showDate: string;    // dynamic from DB
   sortBy: SortBy;
 };
 
@@ -20,6 +20,7 @@ type Movie = {
   rating?: string;     // MPAA like "PG", "R"
   genre?: string[];    // ["Action", "Horror"]
   currentlyPlaying?: boolean;
+  datesPlaying?: string[];
 };
 
 // Optional Vite env, fallback to local backend
@@ -31,7 +32,7 @@ export default function Navbar() {
     query: "",
     genre: "Any",
     mpaa: "Any",
-    minScore: 0,
+    showDate: "Any",
     sortBy: "Relevance",
   });
 
@@ -95,6 +96,14 @@ function SearchDropdown({
     return ["Any", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, [movies]);
 
+  const showDates = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of movies) {
+      for (const d of m.datesPlaying || []) set.add(d);
+    }
+    return ["Any", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, [movies]);
+
   const sorts: SortBy[] = useMemo(
     () => ["Relevance", "Title (A–Z)", "Rating (High→Low)"],
     []
@@ -150,7 +159,7 @@ function SearchDropdown({
     (filters.query.trim() ? 1 : 0) +
     (filters.genre !== "Any" ? 1 : 0) +
     (filters.mpaa !== "Any" ? 1 : 0) +
-    (filters.minScore > 0 ? 1 : 0) +
+    (filters.showDate !== "Any" ? 1 : 0) +
     (filters.sortBy !== "Relevance" ? 1 : 0);
 
   // ✅ Live filtered results (still uses DB data, but filtered client-side)
@@ -166,7 +175,11 @@ function SearchDropdown({
 
       const mpaaOk = filters.mpaa === "Any" || (m.rating || "") === filters.mpaa;
 
-      return titleOk && genreOk && mpaaOk;
+      const dateOk = 
+        filters.showDate === "Any" || 
+        (m.datesPlaying || []).includes(filters.showDate);
+
+      return titleOk && genreOk && mpaaOk && dateOk;
     });
 
     if (filters.sortBy === "Title (A–Z)") {
@@ -237,15 +250,16 @@ function SearchDropdown({
           </div>
 
           <div style={styles.row}>
-            <label style={styles.label}>Min Score: {filters.minScore}</label>
-            <input
-              type="range"
-              min={0}
-              max={10}
-              value={filters.minScore}
-              onChange={(e) => onChange({ ...filters, minScore: Number(e.target.value) })}
-              style={{ width: "100%" }}
-            />
+            <label style={styles.label}>Show Date</label>
+            <select
+              value={filters.showDate}
+              onChange={(e) => onChange({ ...filters, showDate: e.target.value })}
+              style={styles.select}
+            >
+              {showDates.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
           </div>
 
           <div style={styles.row}>
@@ -313,7 +327,7 @@ function SearchDropdown({
             <button
               style={styles.clearBtn}
               onClick={() =>
-                onChange({ query: "", genre: "Any", mpaa: "Any", minScore: 0, sortBy: "Relevance" })
+                onChange({ query: "", genre: "Any", mpaa: "Any", showDate: "Any", sortBy: "Relevance" })
               }
             >
               Clear
