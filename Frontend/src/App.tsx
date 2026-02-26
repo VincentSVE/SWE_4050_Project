@@ -9,31 +9,39 @@ import BookingPage from "./Pages/BookingPage";
 function App() {
   return (
     <div style={styles.appWrapper}>
-      {/* Global Navigation */}
       <Navbar />
 
-      {/* Routes */}
       <Routes>
-        {/* Home Route */}
+        {/* Home */}
         <Route path="/" element={<HomePage />} />
 
-        {/* Explore Route (if your Navbar links to /explore) */}
+        {/* Explore */}
         <Route path="/explore" element={<MoviePage />} />
 
-        {/* Movie Detail Route (new) */}
+        {/* Movie Detail (new canonical route) */}
         <Route path="/movies/:id" element={<MovieDetail />} />
 
-        {/* Backward-compat: keep your old route working */}
-        <Route path="/video/:id" element={<Navigate to="/movies/:id" replace />} />
+        {/* Old route - redirect to canonical route */}
+        <Route path="/video/:id" element={<VideoRedirect />} />
 
-        {/* Optional: 404 fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-
-        <Route path="/booking/:id/:time" element={<BookingPage />} />
+        {/* Booking (matches MovieDetail navigate(`/booking/${title}?time=${t}`)) */}
         <Route path="/booking/:title" element={<BookingPage />} />
+
+        {/* 404 fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   );
+}
+
+/**
+ * Redirect /video/:id -> /movies/:id while preserving the actual :id value.
+ * (Navigate cannot interpolate params in a string like "/movies/:id".)
+ */
+function VideoRedirect() {
+  const url = window.location.pathname; // e.g. "/video/abc123"
+  const id = url.split("/").pop();      // "abc123"
+  return <Navigate to={`/movies/${id}`} replace />;
 }
 
 const styles: Record<string, React.CSSProperties> = {

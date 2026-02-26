@@ -5,7 +5,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 const API_BASE = (import.meta as any).env?.VITE_API_URL?.trim?.() || "http://localhost:8000";
 
 type Movie = {
-  id: string ;
+  _id: string ;
   title: string;
   rating?: string;        // e.g. 8.2        // e.g. "PG-13"
   description?: string;
