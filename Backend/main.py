@@ -68,3 +68,14 @@ async def get_movie(id: str):
         raise HTTPException(status_code=404, detail="Movie not found")
 
     return movie_serializer(movie)
+
+# Filter movies by genre query
+@app.get("/movies/filter/genre)
+async def filter_by_genre(genre: str = Query(...)):
+    query = {"genre": {"$regex": f"^{genre}$", "$options": "i"}}
+    movies = []
+    async for movie in collection.find(query):
+        movies.append(movie_serializer(movie))
+    if not movies:
+        raise HTTPException(status_code = 404, detail = "No movies found under this genre.")
+    return movies
