@@ -1,16 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 
-
-const API_BASE = (import.meta as any).env?.VITE_API_URL?.trim?.() || "http://localhost:8000";
+const API_BASE =
+  (import.meta as any).env?.VITE_API_URL?.trim?.() ||
+  "http://localhost:8000";
 
 type Movie = {
-  _id: string ;
+  _id: string;
   title: string;
-  rating?: string;        // e.g. 8.2        // e.g. "PG-13"
+  rating?: string;
   description?: string;
-  poster?: string;     // full URL or relative
-  trailer?: string;    // YouTube link or embed link
+  poster?: string;
+  trailer?: string;
   genre?: string[];
 };
 
@@ -20,10 +21,6 @@ type ApiState =
   | { status: "success"; movie: Movie };
 
 function toYouTubeEmbed(url: string): string {
-  // Supports:
-  // - https://www.youtube.com/watch?v=VIDEOID
-  // - https://youtu.be/VIDEOID
-  // - already-embed URLs
   try {
     if (url.includes("youtube.com/embed/")) return url;
 
@@ -36,10 +33,8 @@ function toYouTubeEmbed(url: string): string {
       const id = u.searchParams.get("v");
       if (id) return `https://www.youtube.com/embed/${id}`;
     }
-  } catch {
-    // ignore parse errors
-  }
-  return url; // fallback: try as-is
+  } catch {}
+  return url;
 }
 
 export default function MovieDetail() {
@@ -47,14 +42,11 @@ export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const [state, setState] = useState<ApiState>({ status: "loading" });
 
-  // ✅ Hardcoded showtimes per movie (front-end)
-  // You can change keys to match your DB IDs (string/number).
   const showtimesByMovieId: Record<string, string[]> = useMemo(
     () => ({
       "1": ["2:00 PM", "5:00 PM", "8:00 PM"],
       "2": ["1:30 PM", "4:30 PM", "7:30 PM", "10:15 PM"],
       "3": ["12:15 PM", "3:15 PM", "6:15 PM", "9:15 PM"],
-      // default handled below
     }),
     []
   );
@@ -76,16 +68,12 @@ export default function MovieDetail() {
       setState({ status: "loading" });
 
       try {
-        // ✅ Replace with YOUR backend endpoint (Express, Spring, etc.)
-        // Example: GET http://localhost:3001/api/movies/:id
         const res = await fetch(`${API_BASE}/movies/${id}`);
-
         if (!res.ok) {
           throw new Error(`Failed to load movie (${res.status})`);
         }
 
         const movie: Movie = await res.json();
-
         if (!cancelled) setState({ status: "success", movie });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error";
@@ -112,8 +100,12 @@ export default function MovieDetail() {
       <div style={styles.page}>
         <div style={styles.container}>
           <p style={{ color: "white" }}>Couldn’t load movie.</p>
-          <p style={{ color: "rgba(255,255,255,0.75)" }}>{state.message}</p>
-          <Link to="/" style={styles.backLink}>← Back to Home</Link>
+          <p style={{ color: "rgba(255,255,255,0.75)" }}>
+            {state.message}
+          </p>
+          <Link to="/" style={styles.backLink}>
+            ← Back to Home
+          </Link>
         </div>
       </div>
     );
@@ -125,37 +117,42 @@ export default function MovieDetail() {
   return (
     <div style={styles.page}>
       <div style={styles.container}>
-        <Link to="/" style={styles.backLink}>← Back</Link>
+        <Link to="/" style={styles.backLink}>
+          ← Back
+        </Link>
 
         <div style={styles.grid}>
-          {/* Poster */}
           <div>
             {movie.poster ? (
-              <img src={movie.poster} alt={movie.title} style={styles.poster} />
+              <img
+                src={movie.poster}
+                alt={movie.title}
+                style={styles.poster}
+              />
             ) : (
               <div style={styles.posterPlaceholder}>No poster</div>
             )}
           </div>
 
-          {/* Details */}
           <div style={styles.details}>
             <h1 style={styles.title}>{movie.title}</h1>
 
             <div style={styles.metaRow}>
-              {/* ✅ 6. Use movie.rating for the MPAA pill */}
-              {movie.rating && <span style={styles.pill}>{movie.rating}</span>}
-              
-              {/* Render genres if you want to! */}
-              {movie.genre && movie.genre.map(g => (
-                <span key={g} style={styles.pill}>{g}</span>
-              ))}
+              {movie.rating && (
+                <span style={styles.pill}>{movie.rating}</span>
+              )}
+              {movie.genre &&
+                movie.genre.map((g) => (
+                  <span key={g} style={styles.pill}>
+                    {g}
+                  </span>
+                ))}
             </div>
 
             {movie.description && (
               <p style={styles.description}>{movie.description}</p>
             )}
 
-            {/* Showtimes */}
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>Showtimes</h3>
               <div style={styles.timesRow}>
@@ -164,7 +161,11 @@ export default function MovieDetail() {
                     key={t}
                     style={styles.timeBtn}
                     onClick={() =>
-                      navigate(`/booking/${encodeURIComponent(movie.title)}?time=${encodeURIComponent(t)}`)
+                      navigate(
+                        `/booking/${encodeURIComponent(
+                          movie.title
+                        )}?time=${encodeURIComponent(t)}`
+                      )
                     }
                   >
                     {t}
@@ -172,11 +173,11 @@ export default function MovieDetail() {
                 ))}
               </div>
               <p style={styles.sectionHint}>
-                (Hardcoded for now — later you can store showtimes in the DB too.)
+                (Hardcoded for now — later you can store showtimes in
+                the DB too.)
               </p>
             </div>
 
-            {/* Trailer */}
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>Trailer</h3>
 
@@ -191,7 +192,9 @@ export default function MovieDetail() {
                   />
                 </div>
               ) : (
-                <p style={styles.sectionHint}>No trailer available.</p>
+                <p style={styles.sectionHint}>
+                  No trailer available.
+                </p>
               )}
             </div>
           </div>
@@ -203,9 +206,14 @@ export default function MovieDetail() {
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
-    minHeight: "100vh",
-    paddingTop: 90, // because your Navbar is fixed at 70px
-    background: "radial-gradient(1200px 600px at 20% 10%, rgba(255,255,255,0.08), transparent 60%), rgba(10,10,12,1)",
+    position: "fixed",
+    inset: 0,
+    paddingTop: 90,
+    overflowY: "auto",
+    overflowX: "hidden",
+    backgroundColor: "#0a0a0c",
+    background:
+      "radial-gradient(1200px 600px at 20% 10%, rgba(255,255,255,0.08), transparent 60%), rgba(10,10,12,1)",
   },
   container: {
     maxWidth: 1100,
@@ -243,9 +251,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     fontWeight: 800,
   },
-  details: {
-    color: "white",
-  },
+  details: { color: "white" },
   title: {
     margin: "0 0 10px",
     fontSize: 34,
