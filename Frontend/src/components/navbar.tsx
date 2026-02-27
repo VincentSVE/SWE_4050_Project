@@ -5,9 +5,9 @@ type SortBy = "Relevance" | "Title (A–Z)" | "Rating (High→Low)";
 
 type SearchFilters = {
   query: string;
-  genre: string;       // dynamic from DB
-  mpaa: string;        // dynamic from DB
-  showDate: string;    // dynamic from DB
+  genre: string;       
+  mpaa: string;        
+  showDate: string;    
   sortBy: SortBy;
 };
 
@@ -17,13 +17,13 @@ type Movie = {
   description?: string;
   trailer?: string;
   poster?: string;
-  rating?: string;     // MPAA like "PG", "R"
-  genre?: string[];    // ["Action", "Horror"]
+  rating?: string;     
+  genre?: string[];    
   currentlyPlaying?: boolean;
   datesPlaying?: string[];
 };
 
-// Optional Vite env, fallback to local backend
+
 const API_BASE =
   (import.meta as any).env?.VITE_API_URL?.trim?.() || "http://127.0.0.1:8000";
 
@@ -79,7 +79,7 @@ function SearchDropdown({
   const [loadingMovies, setLoadingMovies] = useState(false);
   const [moviesError, setMoviesError] = useState("");
 
-  // ✅ dynamic options derived from DB
+  // dynamic options derived from DB
   const genres = useMemo(() => {
     const set = new Set<string>();
     for (const m of movies) {
@@ -162,7 +162,7 @@ function SearchDropdown({
     (filters.showDate !== "Any" ? 1 : 0) +
     (filters.sortBy !== "Relevance" ? 1 : 0);
 
-  // ✅ Live filtered results (still uses DB data, but filtered client-side)
+  //  Live filtered results 
   const filteredResults = useMemo(() => {
     const q = filters.query.trim().toLowerCase();
 
@@ -275,7 +275,7 @@ function SearchDropdown({
             </select>
           </div>
 
-          {/* ✅ Results from DB */}
+          {/* Results from DB */}
           <div style={{ marginTop: 8 }}>
             <div style={{ ...styles.label, marginBottom: 6 }}>Results</div>
 

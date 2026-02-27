@@ -141,7 +141,7 @@ function TicketRow({ label, price, value, onChange }: TicketRowProps) {
 }
 
 const styles: Record<string, CSSProperties> = {
-  // ✅ fixes “white border” by covering the entire viewport regardless of body margin
+  // fixes “white border” by covering the entire viewport regardless of body margin
   page: {
     position: "fixed",
     inset: 0,

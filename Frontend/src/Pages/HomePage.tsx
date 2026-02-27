@@ -58,7 +58,7 @@ export default function HomePage() {
           paddingLeft: 60,
           paddingRight: 60,
           display: "flex",
-          gap: 60, // bigger gap so sections are clearly separated
+          gap: 60, 
         }}
       >
         {/* LEFT (2/3) */}
