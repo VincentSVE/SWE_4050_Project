@@ -8,7 +8,6 @@ type Props = {
 export default function MovieCard({ movie }: Props) {
   const navigate = useNavigate();
 
-  // 🔥 Support both Mongo `_id` and plain `id`
   const movieId = (movie as any)._id ?? (movie as any).id;
 
   const handleClick = () => {
