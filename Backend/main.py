@@ -124,6 +124,25 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+class UpdateProfile(BaseModel):
+    name: str | None = Field(default=None, max_length=100)
+    username: str | None = Field(default=None, min_length=3, max_length=30)
+
+class PaymentCard(BaseModel):
+    cardholder_name: str = Field(max_length=100)
+    card_number: str = Field(min_length=13, max_length=19)  # digits only
+    expiry_month: int = Field(ge=1, le=12)
+    expiry_year: int = Field(ge=2024)
+    cvv: str = Field(min_length=3, max_length=4)
+
 # ---------- Serializers ----------
 def movie_serializer(movie) -> dict:
     return {
@@ -140,12 +159,22 @@ def movie_serializer(movie) -> dict:
 
 
 def user_serializer(user) -> dict:
+    cards = []
+    for card in user.get("payment_cards", []):
+        cards.append({
+            "cardholder_name": card.get("cardholder_name"),
+            "last4": str(card.get("card_number", ""))[-4:],
+            "expiry_month": card.get("expiry_month"),
+            "expiry_year": card.get("expiry_year"),
+        })
     return {
         "id": str(user["_id"]),
         "email": user.get("email", ""),
         "username": user.get("username"),
         "name": user.get("name"),
         "status": user.get("status", "Inactive"),
+        "payment_cards": cards,
+        "favorite_movie_ids": user.get("favorite_movie_ids", []),
     }
 
 
@@ -240,6 +269,31 @@ If you did not create this account, you can ignore this email.
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
 
+def make_password_reset_token():
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    expires_at = int(time.time()) + (PASSWORD_RESET_TOKEN_EXPIRE_MINUTES * 60)
+    return raw_token, token_hash, expires_at
+
+def send_password_reset_email(to_email: str, name: str | None, raw_token: str) -> None:
+    reset_url = f"{FRONTEND_URL}/reset-password?token={raw_token}"
+    greeting = name or "there"
+    msg = EmailMessage()
+    msg["Subject"] = "Reset your password"
+    msg["From"] = MAIL_FROM
+    msg["To"] = to_email
+    msg.set_content(f"""Hi {greeting},
+
+We received a request to reset the password for your account.
+
+Click the link below to choose a new password. This link expires in {PASSWORD_RESET_TOKEN_EXPIRE_MINUTES} minutes.
+
+{reset_url}
+
+If you did not request a password reset, you can safely ignore this email.
+""")
+    send_email(msg)
+    
 # ---------- Existing movie endpoints ----------
 @app.get("/movies")
 async def get_movies():
@@ -287,6 +341,8 @@ async def signup(user: UserSignup, background_tasks: BackgroundTasks):
         "verificationTokenHash": token_hash,
         "verificationTokenExpiresAt": expires_at,
         "createdAt": int(time.time()),
+        "payment_cards": [],
+        "favorite_movie_ids": [],
     }
 
     try:
@@ -412,3 +468,192 @@ async def login(user: UserLogin):
 @app.get("/me", response_model=UserResponse)
 async def get_me(current_user=Depends(get_current_user)):
     return user_serializer(current_user)
+
+@app.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
+async def forgot_password(body: ForgotPasswordRequest, background_tasks: BackgroundTasks):
+    email = str(body.email).strip().lower()
+    user = await users_collection.find_one({"email": email})
+
+    if user:
+        raw_token, token_hash, expires_at = make_password_reset_token()
+        await users_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": {
+                "passwordResetTokenHash": token_hash,
+                "passwordResetTokenExpiresAt": expires_at,
+            }},
+        )
+        background_tasks.add_task(
+            send_password_reset_email, email, user.get("name"), raw_token
+        )
+
+    return {"message": "If that email is registered you will receive a reset link shortly."}
+
+@app.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(body: ResetPasswordRequest):
+    token_hash = hashlib.sha256(body.token.encode("utf-8")).hexdigest()
+    user = await users_collection.find_one({"passwordResetTokenHash": token_hash})
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or already-used reset link.")
+
+    if user.get("passwordResetTokenExpiresAt", 0) < int(time.time()):
+        await users_collection.update_one(
+            {"_id": user["_id"]},
+            {"$unset": {"passwordResetTokenHash": "", "passwordResetTokenExpiresAt": ""}},
+        )
+        raise HTTPException(
+            status_code=400, detail="Reset link has expired. Please request a new one."
+        )
+
+    await users_collection.update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "hashed_password": hash_password(body.new_password),
+                "passwordChangedAt": int(time.time()),
+            },
+            "$unset": {"passwordResetTokenHash": "", "passwordResetTokenExpiresAt": ""},
+        },
+    )
+    return {"message": "Password updated successfully. You can now log in."}
+
+# Profile endpoints 
+
+@app.get("/me/profile")
+async def get_profile(current_user=Depends(get_current_user)):
+    """
+    Returns the full profile including address, masked payment cards,
+    and the list of favourite movie IDs.
+    Use this instead of /me when loading the profile page.
+    """
+    return profile_serializer(current_user)
+
+
+@app.patch("/me/profile")
+async def update_profile(
+    body: UpdateProfile,
+    current_user=Depends(get_current_user),
+):
+# update name or username, NOT email
+    updates = {}
+
+    if body.name is not None:
+        updates["name"] = body.name.strip() or None
+
+    if body.username is not None:
+        new_username = body.username.strip().lower()
+        existing = await users_collection.find_one({"username": new_username})
+        if existing and existing["_id"] != current_user["_id"]:
+            raise HTTPException(status_code=400, detail="Username already taken")
+        updates["username"] = new_username
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields provided to update")
+
+    await users_collection.update_one(
+        {"_id": current_user["_id"]},
+        {"$set": updates},
+    )
+
+    updated_user = await users_collection.find_one({"_id": current_user["_id"]})
+    return profile_serializer(updated_user)
+
+
+
+# ---------- Payment card endpoints ----------
+
+MAX_CARDS = 3
+
+
+@app.post("/me/cards", status_code=status.HTTP_201_CREATED)
+async def add_card(
+    body: PaymentCard,
+    current_user=Depends(get_current_user),
+):
+
+# Add a payment card. Reject if the user already has 3 cards.
+  
+    existing_cards = current_user.get("payment_cards", [])
+
+    if len(existing_cards) >= MAX_CARDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"You can only store up to {MAX_CARDS} payment cards.",
+        )
+
+    await users_collection.update_one(
+        {"_id": current_user["_id"]},
+        {"$push": {"payment_cards": body.model_dump()}},
+    )
+
+    updated_user = await users_collection.find_one({"_id": current_user["_id"]})
+    return profile_serializer(updated_user)["payment_cards"]
+
+
+@app.delete("/me/cards/{card_index}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_card(
+    card_index: int,
+    current_user=Depends(get_current_user),
+):
+    cards = current_user.get("payment_cards", [])
+
+    if card_index < 0 or card_index >= len(cards):
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    await users_collection.update_one(
+        {"_id": current_user["_id"]},
+        {"$unset": {f"payment_cards.{card_index}": 1}},
+    )
+    await users_collection.update_one(
+        {"_id": current_user["_id"]},
+        {"$pull": {"payment_cards": None}},
+    )
+
+
+# ---------- Favourites endpoints ----------
+
+@app.get("/me/favorites")
+async def get_favorites(current_user=Depends(get_current_user)):
+# return full movie objects for all favorites so they can be displayed
+    fav_ids = current_user.get("favorite_movie_ids", [])
+    object_ids = [ObjectId(mid) for mid in fav_ids if ObjectId.is_valid(mid)]
+
+    movies = []
+    async for movie in collection.find({"_id": {"$in": object_ids}}):
+        movies.append(movie_serializer(movie))
+    return movies
+
+
+@app.post("/me/favorites/{movie_id}", status_code=status.HTTP_201_CREATED)
+async def add_favorite(
+    movie_id: str,
+    current_user=Depends(get_current_user),
+):
+    if not ObjectId.is_valid(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID")
+
+    movie = await collection.find_one({"_id": ObjectId(movie_id)})
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+
+    await users_collection.update_one(
+        {"_id": current_user["_id"]},
+        {"$addToSet": {"favorite_movie_ids": movie_id}},
+    )
+    return {"message": "Added to favourites"}
+
+
+@app.delete("/me/favorites/{movie_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_favorite(
+    movie_id: str,
+    current_user=Depends(get_current_user),
+):
+    if not ObjectId.is_valid(movie_id):
+        raise HTTPException(status_code=400, detail="Invalid movie ID")
+
+    await users_collection.update_one(
+        {"_id": current_user["_id"]},
+        {"$pull": {"favorite_movie_ids": movie_id}},
+    )
+
